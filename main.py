@@ -74,34 +74,29 @@ def get_connecting_routes(route_num:str) -> None:
 
     ### Get list of routes within extent of target route
     routes = []
-    CONNECTIONS = []
-    for datum in data:
-        route = data[str(datum)]
-        if str(datum) != route_num and has_intersection(t_route["latMin"], t_route["latMax"], t_route["lonMin"], t_route["lonMax"],
+    for tag in data:
+        route = data[str(tag)]
+        if str(tag) != route_num and has_intersection(t_route["latMin"], t_route["latMax"], t_route["lonMin"], t_route["lonMax"],
                             route["latMin"], route["latMax"], route["lonMin"], route["lonMax"]):
             routes.append(route["tag"])
 
     ### Get list of connecting stops from list of routes within
-    connectingStops = []
-    for t_stop in t_route["stop"]:
-        t_latlon = LatLon(Latitude(float(t_stop["lat"])), Longitude(float(t_stop["lon"])))
-        for datum in routes:
-            route = data[datum]
-            subConnectingStops = []
-            for stop in route["stop"]:
-                latlon = LatLon(Latitude(float(stop["lat"])), Longitude(float(stop["lon"])))
-                if t_latlon.distance(latlon) <= MAX_DISTANCE:
-                    subConnectingStops.append(stop)
-            connectingRoute = {datum : subConnectingStops}
-            if len(subConnectingStops) > 1:
-                if (datum not in CONNECTIONS):
-                    CONNECTIONS.append(datum)
-                connectingStops.append(connectingRoute)
+    connectingRoutes = []
+
+    for t_stop in data[route_num]["stop"]:
+        t_latlon = LatLon(Latitude(t_stop["lat"]), Longitude(t_stop["lon"]))
+        for tag in routes:
+            for stop in data[tag]["stop"]:
+                latlon = LatLon(Latitude(stop["lat"]), Longitude(stop["lon"]))
+                if (tag not in connectingRoutes) and (t_latlon.distance(latlon) < MAX_DISTANCE):
+                    connectingRoutes.append(tag)
+            
 
     with open(TTC_CONNECTIONS_PATH, 'r') as connections:
         data = json.load(connections)
 
-    data.update({route_num : connectingStops})
+    connectingRoutes.sort()
+    data.update({route_num : connectingRoutes})
 
     with open(TTC_CONNECTIONS_PATH, 'w') as connections:
         json.dump(data, connections)
@@ -114,9 +109,7 @@ def get_connecting_routes(route_num:str) -> None:
     a = LatLon(Latitude(43.7331599), Longitude(-79.45294))
     b = LatLon(Latitude(43.7372999), Longitude(-79.43323))
     print(a.distance(b))
-
-    print(len(connectingStops))
-    print(CONNECTIONS)
+    print(len(connectingRoutes))
 
 
     ### Check route criteria:
@@ -127,4 +120,4 @@ def get_connecting_routes(route_num:str) -> None:
 
 if __name__ == "__main__":
     print('hello')
-    get_connecting_routes("7")
+    get_connecting_routes("68")
