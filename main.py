@@ -1,43 +1,61 @@
 import json
 import requests
 import time
+from datetime import datetime
 from latloncalc.latlon import LatLon, Latitude, Longitude
 from shapely.geometry import Polygon
 
 API_ROUTE_CONFIG = "https://retro.umoiq.com/service/publicJSONFeed?command=routeConfig&a=ttc&r="
 API_ROUTE_LIST = "https://retro.umoiq.com/service/publicJSONFeed?command=routeList&a=ttc"
-TTC_JSON_PATH = "./ttc.json"
-TTC_CONNECTIONS_PATH = "./connections.json"
+TTC_ROUTE_INFO_PATH = "./routeInfo.json"
+TTC_ROUTES_PATH = "./routes.json"
 MAX_DISTANCE = 0.25
 
-def get_route_list_json() -> None:
-    """Create or write to a JSON file. Contents are all the TTC routes as JSON objects.
+def generate_routes_json() -> None:
+    """Generate a list of all TTC routes in a JSON file."""
+    print("TASK: Generating routes.json")
+
+    routes = []
+    req = requests.get(API_ROUTE_LIST).json()
+
+    for route in req["route"]:
+        routes.append(route)
+
+    data = {"date":str(datetime.now()),"routes":routes}
+
+    with open(TTC_ROUTES_PATH, 'w') as routes_json:
+        json.dump(data, routes_json)
+        print("TASK COMPLETE: Generated routes.json")
+
+
+def generate_route_info_json() -> None:
+    """Generate a JSON file. Contents are all the TTC routes as JSON objects.
     """
+    print("TASK: Generating routeInfo.json")
 
     ### Get list of routes
     route_nums = []
-    request = requests.get(API_ROUTE_LIST).json()
-    for route in request["route"]:
+    req = requests.get(API_ROUTE_LIST).json()
+    for route in req["route"]:
         route_nums.append(route["tag"])
-    print(route_nums)
-
 
     ### Create json of routes with route config information
-    data = {}
+    data = {"date": str(datetime.now())}
 
     for route_num in route_nums:
-        request = requests.get(API_ROUTE_CONFIG + route_num).json()
-        print(request["route"]["title"])
+        req = requests.get(API_ROUTE_CONFIG + route_num).json()
         data.update(
             {
-                request["route"]["tag"] : request["route"]
+                req["route"]["tag"] : req["route"]
             }
         )
-        time.sleep(0.25)
+        print(f'INFO: {req["route"]["title"]} retrieved')
+        time.sleep(0.25) # To not surpass the limit of 10MB/10sec
 
-
-    with open(TTC_JSON_PATH, 'w') as ttc:
-        json.dump(data, ttc)
+    with open(TTC_ROUTE_INFO_PATH, 'w') as route_info_json:
+        json.dump(data, route_info_json)
+    
+    print("TASK COMPLETE: Generated routeInfo.json")
    
 
 def has_intersection(t_latMin:float, t_latMax:float, t_lonMin:float, t_lonMax:float,
@@ -106,9 +124,6 @@ def get_connecting_routes(route_num:str) -> None:
     # for t_stop in t_route["stop"]:
     #     print(t_stop)
 
-    a = LatLon(Latitude(43.7331599), Longitude(-79.45294))
-    b = LatLon(Latitude(43.7372999), Longitude(-79.43323))
-    print(a.distance(b))
     print(len(connectingRoutes))
 
 
@@ -120,4 +135,5 @@ def get_connecting_routes(route_num:str) -> None:
 
 if __name__ == "__main__":
     print('hello')
-    get_connecting_routes("68")
+    # generate_routes_json()
+    generate_route_info_json()
